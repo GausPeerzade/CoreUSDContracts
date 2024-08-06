@@ -155,7 +155,7 @@ contract CoreLogic is Ownable {
 
     function usdToCore(uint256 _amount) public view returns (uint256) {
         uint256 price = Oracle(priceOracle).getPrice();
-        return (_amount * price) / 10e18;
+        return (_amount * price) / 1e18;
     }
 
     // function mintStable() internal {}
