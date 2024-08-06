@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
+import "./Oracle.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import "./CoreUSD.sol";
 
 contract CoreLogic is Ownable {
     address public coreUSD;
@@ -9,9 +11,11 @@ contract CoreLogic is Ownable {
     mapping(address => uint256) public totalDebt;
     uint256 public liquidityThreashold;
     uint256 public minThreashold;
-    address public oracle;
+    address public priceOracle;
 
     error CollateralValueZero();
+    error ValueZero();
+    error HealthFactorBelowMIN(uint256);
 
     constructor(
         address _coreUSD,
@@ -22,7 +26,7 @@ contract CoreLogic is Ownable {
         coreUSD = _coreUSD;
         liquidityThreashold = _liquidityThreashold;
         minThreashold = _minThreashold;
-        oracle = _oracle;
+        priceOracle = _oracle;
     }
 
     function deposiCollateral() external payable {
@@ -32,17 +36,85 @@ contract CoreLogic is Ownable {
         collateralDeposited[msg.sender] += msg.value;
     }
 
-    function deposiCollateralandMint() external payable {}
+    function deposiCollateralandMint(uint256 _amount) external payable {
+        if (msg.value == 0) {
+            revert CollateralValueZero();
+        }
 
-    function borrowTokens() external {}
+        totalDebt[msg.sender] += _amount;
+        collateralDeposited[msg.sender] += msg.value;
 
-    function redeemCollateral() external {}
+        uint256 userhealthFactor = getHealthFactor(msg.sender);
+        revertIfHealthFactorIsBroken(userhealthFactor);
+        StableToken(coreUSD).mint(msg.sender, _amount);
+    }
 
-    function redeemCollateralandBurn() external {}
+    function borrowTokens(uint256 _amount) external returns (bool) {
+        if (_amount == 0) {
+            revert ValueZero();
+        }
+        totalDebt[msg.sender] += _amount;
+        uint256 userhealthFactor = getHealthFactor(msg.sender);
+        revertIfHealthFactorIsBroken(userhealthFactor);
+        StableToken(coreUSD).mint(msg.sender, _amount);
+        return true;
+    }
 
-    function repay() external {}
+    function redeemCollateral(uint256 _amount) external {
+        if (_amount == 0) {
+            revert CollateralValueZero();
+        }
+        collateralDeposited[msg.sender] -= _amount;
+        uint256 userhealthFactor = getHealthFactor(msg.sender);
+        revertIfHealthFactorIsBroken(userhealthFactor);
+        (bool sent, ) = payable(msg.sender).call{value: _amount}("");
+        require(sent, "Failed to send ");
+    }
 
-    function swap() external {}
+    function redeemCollateralandBurn(
+        uint256 _redeemAmount,
+        uint256 _burnAmount
+    ) external {
+        if (_redeemAmount == 0 || _burnAmount == 0) {
+            revert ValueZero();
+        }
+
+        collateralDeposited[msg.sender] -= _redeemAmount;
+        totalDebt[msg.sender] -= _burnAmount;
+        uint256 userhealthFactor = getHealthFactor(msg.sender);
+        revertIfHealthFactorIsBroken(userhealthFactor);
+        (bool sent, ) = payable(msg.sender).call{value: _redeemAmount}("");
+        require(sent, "Failed to send ");
+        StableToken(coreUSD).transferFrom(
+            msg.sender,
+            address(this),
+            _burnAmount
+        );
+
+        StableToken(coreUSD).burn(_burnAmount);
+    }
+
+    function repay(uint256 _amount) external {
+        if (_amount == 0) {
+            revert ValueZero();
+        }
+        totalDebt[msg.sender] -= _amount;
+
+        StableToken(coreUSD).transferFrom(msg.sender, address(this), _amount);
+
+        StableToken(coreUSD).burn(_amount);
+    }
+
+    function swap(uint256 _amount) external {
+        uint256 amountInCore = usdToCore(_amount);
+
+        StableToken(coreUSD).transferFrom(msg.sender, address(this), _amount);
+
+        StableToken(coreUSD).burn(_amount);
+
+        (bool sent, ) = payable(msg.sender).call{value: amountInCore}("");
+        require(sent, "Failed to send ");
+    }
 
     function liquidate() external {}
 
@@ -50,9 +122,32 @@ contract CoreLogic is Ownable {
 
     function config() public view {}
 
-    function getHealthFactor() public view {}
+    function getHealthFactor(address user) public view returns (uint256) {
+        uint256 collateralInUSD = coreToUSD(collateralDeposited[user]);
+        uint256 userDebt = totalDebt[user];
+        if (userDebt == 0) return type(uint256).max;
+        return (collateralInUSD * 100) / (userDebt * liquidityThreashold);
+    }
 
-    function coreToUSD() public view {}
+    function coreToUSD(uint256 _amount) public view returns (uint256) {
+        uint256 price = Oracle(priceOracle).getPrice();
+        return (_amount * 10e18) / price;
+    }
 
-    function usdToCore() public view {}
+    function usdToCore(uint256 _amount) public view returns (uint256) {
+        uint256 price = Oracle(priceOracle).getPrice();
+        return (_amount * price) / 10e18;
+    }
+
+    // function mintStable() internal {}
+
+    // function burnStable() internal {}
+
+    function revertIfHealthFactorIsBroken(
+        uint256 userHealthFactor
+    ) internal view {
+        if (userHealthFactor < minThreashold) {
+            revert HealthFactorBelowMIN(userHealthFactor);
+        }
+    }
 }
