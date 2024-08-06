@@ -1,24 +1,25 @@
-// // SPDX-License-Identifier: UNLICENSED
-// pragma solidity ^0.8.13;
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.13;
 
-// import {Test, console} from "forge-std/Test.sol";
-// import {Counter} from "../src/Counter.sol";
+import {Test, console} from "forge-std/Test.sol";
+import "../src/CoreLogic.sol";
+import "../src/CoreUSD.sol";
+import "../src/Oracle.sol";
 
-// contract CounterTest is Test {
-//     Counter public counter;
+contract CounterTest is Test {
+    address public protocol;
+    address public coreUsd;
+    address public oracle;
 
-//     function setUp() public {
-//         counter = new Counter();
-//         counter.setNumber(0);
-//     }
+    function setUp() public {
+        Oracle _oracle = new Oracle();
+        console.log("oracle address is", address(_oracle));
+        oracle = address(_oracle);
+        Oracle(oracle).setPrice(103e16);
+        console.log("oracle price is ", Oracle(oracle).getPrice());
 
-//     function test_Increment() public {
-//         counter.increment();
-//         assertEq(counter.number(), 1);
-//     }
+        StableToken _coreUsd = new StableToken();
+    }
 
-//     function testFuzz_SetNumber(uint256 x) public {
-//         counter.setNumber(x);
-//         assertEq(counter.number(), x);
-//     }
-// }
+    function testSetUp() public {}
+}

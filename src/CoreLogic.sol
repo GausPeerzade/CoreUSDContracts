@@ -135,9 +135,11 @@ contract CoreLogic is Ownable {
         require(sent, "Failed to send ");
     }
 
-    function userInfo() public view {}
+    // function userInfo(address _user) public view {
+    //     uint256
+    // }
 
-    function config() public view {}
+    // function config() public view {}
 
     function getHealthFactor(address user) public view returns (uint256) {
         uint256 collateralInUSD = coreToUSD(collateralDeposited[user]);
