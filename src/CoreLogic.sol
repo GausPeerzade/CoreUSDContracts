@@ -16,6 +16,7 @@ contract CoreLogic is Ownable {
     error CollateralValueZero();
     error ValueZero();
     error HealthFactorBelowMIN(uint256);
+    error HealthFactorSafe(uint256);
 
     constructor(
         address _coreUSD,
@@ -116,7 +117,23 @@ contract CoreLogic is Ownable {
         require(sent, "Failed to send ");
     }
 
-    function liquidate() external {}
+    function liquidate(address _user, uint256 _amount) external {
+        uint256 userhealthFactor = getHealthFactor(_user);
+        revertIfHealthFactorIsSafe(userhealthFactor);
+        totalDebt[_user] -= _amount;
+        uint256 amountInCore = usdToCore(_amount);
+        uint256 amountBonus = ((amountInCore * 10) / 100) + amountInCore;
+        uint256 userCollateral = collateralDeposited[_user];
+        if (amountBonus > userCollateral) {
+            collateralDeposited[_user] = 0;
+        }
+        collateralDeposited[_user] -= amountBonus;
+
+        StableToken(coreUSD).transferFrom(msg.sender, address(this), _amount);
+        StableToken(coreUSD).burn(_amount);
+        (bool sent, ) = payable(msg.sender).call{value: amountInCore}("");
+        require(sent, "Failed to send ");
+    }
 
     function userInfo() public view {}
 
@@ -148,6 +165,14 @@ contract CoreLogic is Ownable {
     ) internal view {
         if (userHealthFactor < minThreashold) {
             revert HealthFactorBelowMIN(userHealthFactor);
+        }
+    }
+
+    function revertIfHealthFactorIsSafe(
+        uint256 userHealthFactor
+    ) internal view {
+        if (userHealthFactor >= minThreashold) {
+            revert HealthFactorSafe(userHealthFactor);
         }
     }
 }
