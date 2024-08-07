@@ -68,7 +68,9 @@ contract CoreLogic is Ownable {
         collateralDeposited[msg.sender] -= _amount;
         uint256 userhealthFactor = getHealthFactor(msg.sender);
         revertIfHealthFactorIsBroken(userhealthFactor);
-        (bool sent, ) = payable(msg.sender).call{value: _amount}("");
+        (bool sent, bytes memory data) = payable(msg.sender).call{
+            value: _amount
+        }("");
         require(sent, "Failed to send ");
     }
 
@@ -84,8 +86,6 @@ contract CoreLogic is Ownable {
         totalDebt[msg.sender] -= _burnAmount;
         uint256 userhealthFactor = getHealthFactor(msg.sender);
         revertIfHealthFactorIsBroken(userhealthFactor);
-        (bool sent, ) = payable(msg.sender).call{value: _redeemAmount}("");
-        require(sent, "Failed to send ");
         StableToken(coreUSD).transferFrom(
             msg.sender,
             address(this),
@@ -93,6 +93,8 @@ contract CoreLogic is Ownable {
         );
 
         StableToken(coreUSD).burn(_burnAmount);
+        (bool sent, ) = payable(msg.sender).call{value: _redeemAmount}("");
+        require(sent, "Failed to send ");
     }
 
     function repay(uint256 _amount) external {
@@ -135,9 +137,13 @@ contract CoreLogic is Ownable {
         require(sent, "Failed to send ");
     }
 
-    // function userInfo(address _user) public view {
-    //     uint256
-    // }
+    function maxBorrow(address _user) public view returns (uint256) {
+        uint256 deposit = collateralDeposited[_user];
+        uint256 depoistInUsd = coreToUSD(deposit);
+        uint256 debt = totalDebt[_user];
+
+        return ((depoistInUsd * 100) / 130) - debt;
+    }
 
     // function config() public view {}
 
@@ -150,12 +156,12 @@ contract CoreLogic is Ownable {
 
     function coreToUSD(uint256 _amount) public view returns (uint256) {
         uint256 price = Oracle(priceOracle).getPrice();
-        return (_amount * 1e18) / price;
+        return (_amount * price) / 1e18;
     }
 
     function usdToCore(uint256 _amount) public view returns (uint256) {
         uint256 price = Oracle(priceOracle).getPrice();
-        return (_amount * price) / 1e18;
+        return (_amount * 1e18) / price;
     }
 
     // function mintStable() internal {}

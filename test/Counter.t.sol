@@ -32,26 +32,96 @@ contract CounterTest is Test {
     }
 
     function testDeposit() public {
-        CoreLogic(protocol).deposiCollateral{value: 1e18}();
+        CoreLogic(protocol).deposiCollateral{value: 10e18}();
         uint256 deposited = CoreLogic(protocol).collateralDeposited(
             address(this)
         );
         uint256 tokenMinted = CoreLogic(protocol).totalDebt(address(this));
         uint256 hf = CoreLogic(protocol).getHealthFactor(address(this));
+        uint256 maxBorrow = CoreLogic(protocol).maxBorrow(address(this));
         console.log("deposit is ", deposited);
         console.log("tokenMinted is ", tokenMinted);
         console.log("hf is ", hf);
+        console.log("maxBorrow is ", maxBorrow);
     }
 
     function testDepositAndMint() public {
-        CoreLogic(protocol).deposiCollateralandMint{value: 10e18}(9e18);
+        CoreLogic(protocol).deposiCollateralandMint{value: 10e18}(746e16);
+        uint256 deposited = CoreLogic(protocol).collateralDeposited(
+            address(this)
+        );
+    }
+
+    function testborrowTokens() public {
+        testDeposit();
+        CoreLogic(protocol).borrowTokens(792e16);
+        uint256 tokenMinted = CoreLogic(protocol).totalDebt(address(this));
+        uint256 hf = CoreLogic(protocol).getHealthFactor(address(this));
+        uint256 maxBorrow = CoreLogic(protocol).maxBorrow(address(this));
+        console.log("tokenMinted is ", tokenMinted);
+        console.log("hf is ", hf);
+        console.log("maxBorrow is ", maxBorrow);
+    }
+
+    function testredeemCollateral() public {
+        CoreLogic(protocol).deposiCollateral{value: 10e18}();
+        uint256 deposited = CoreLogic(protocol).collateralDeposited(
+            address(this)
+        );
+        console.log("balance in  is", protocol.balance);
+        console.log("deposit is", deposited);
+        CoreLogic(protocol).redeemCollateral(deposited);
+        console.log("balance after  is", protocol.balance);
+    }
+
+    function testredeemCollateralandBurn() public {
+        CoreLogic(protocol).deposiCollateralandMint{value: 10e18}(2e18);
+        uint256 deposited = CoreLogic(protocol).collateralDeposited(
+            address(this)
+        );
+        console.log("balance in  is", protocol.balance);
+        console.log("deposit is", deposited);
+        StableToken(coreUsd).approve(protocol, 100e18);
+        CoreLogic(protocol).redeemCollateralandBurn(5e18, 1e18);
+        console.log("balance after  is", protocol.balance);
+    }
+
+    function testrepay() public {
+        CoreLogic(protocol).deposiCollateralandMint{value: 10e18}(2e18);
         uint256 deposited = CoreLogic(protocol).collateralDeposited(
             address(this)
         );
         uint256 tokenMinted = CoreLogic(protocol).totalDebt(address(this));
         uint256 hf = CoreLogic(protocol).getHealthFactor(address(this));
-        console.log("deposit is ", deposited);
+        uint256 maxBorrow = CoreLogic(protocol).maxBorrow(address(this));
         console.log("tokenMinted is ", tokenMinted);
         console.log("hf is ", hf);
+        console.log("maxBorrow is ", maxBorrow);
+        StableToken(coreUsd).approve(protocol, 100e18);
+        CoreLogic(protocol).repay(1e18);
+        tokenMinted = CoreLogic(protocol).totalDebt(address(this));
+        hf = CoreLogic(protocol).getHealthFactor(address(this));
+        maxBorrow = CoreLogic(protocol).maxBorrow(address(this));
+        console.log("tokenMinted is ", tokenMinted);
+        console.log("hf is ", hf);
+        console.log("maxBorrow is ", maxBorrow);
     }
+
+    function testSwap() public {
+        testDepositAndMint();
+        console.log(
+            "stable balance before is",
+            StableToken(coreUsd).balanceOf(address(this))
+        );
+        console.log("balance before  is", address(this).balance);
+        StableToken(coreUsd).approve(protocol, 100e18);
+        CoreLogic(protocol).swap(1e18);
+        console.log("balance after  is", address(this).balance);
+        console.log(
+            "stavle balance after is",
+            StableToken(coreUsd).balanceOf(address(this))
+        );
+    }
+
+    receive() external payable {}
 }
