@@ -14,20 +14,20 @@ contract CounterScript is Script {
     function setUp() public {}
 
     function run() public {
-        uint256 privateKey = privateK;
+        uint256 privateKey = privateKey;
         address deployer = vm.addr(privateKey);
         vm.startBroadcast(privateKey);
-        // Oracle _oracle = new Oracle();
-        // oracle = address(_oracle);
-        // console.log("oracle address is", oracle);
-        // Oracle(oracle).setPrice(103e16);
-        // StableToken _coreUsd = new StableToken();
-        // coreUsd = address(_coreUsd);
-        // console.log("coreUsd address is", coreUsd);
-        // CoreLogic _coreLogic = new CoreLogic(coreUsd, 130, 1, oracle);
-        // protocol = address(_coreLogic);
-        // console.log("protocol address is", protocol);
-        // StableToken(coreUsd).transferOwnership(protocol);
+        Oracle _oracle = new Oracle();
+        oracle = address(_oracle);
+        console.log("oracle address is", oracle);
+        Oracle(oracle).setPrice(103e16);
+        StableToken _coreUsd = new StableToken();
+        coreUsd = address(_coreUsd);
+        console.log("coreUsd address is", coreUsd);
+        CoreLogic _coreLogic = new CoreLogic(coreUsd, 130, 1, oracle);
+        protocol = address(_coreLogic);
+        console.log("protocol address is", protocol);
+        StableToken(coreUsd).transferOwnership(protocol);
 
         CoreLogic(protocol).deposiCollateral{value: 1e15}();
         uint256 deposited = CoreLogic(protocol).collateralDeposited(deployer);
@@ -43,4 +43,5 @@ contract CounterScript is Script {
 }
 //0x991f4bf07ec670BF19Ee6BDF5AA9F6b39d5c6B83
 //https://rpc.test.btcs.network
+//https://alfajores-forno.celo-testnet.org
 // forge script script/counter.s.sol --rpc-url https://rpc.test.btcs.network --broadcast -vvv --legacy --slow

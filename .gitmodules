@@ -4,3 +4,6 @@
 [submodule "lib/openzeppelin-contracts"]
 	path = lib/openzeppelin-contracts
 	url = https://github.com/OpenZeppelin/openzeppelin-contracts
+[submodule "lib/concentrated-liquidity-management-vault"]
+	path = lib/concentrated-liquidity-management-vault
+	url = https://github.com/RiveraMoney/concentrated-liquidity-management-vault
